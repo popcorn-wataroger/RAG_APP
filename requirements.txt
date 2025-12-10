@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic==2.*
+chromadb
+tiktoken
+pypdf
+pillow
+openai==1.*
+python-dotenv
