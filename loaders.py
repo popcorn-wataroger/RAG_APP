@@ -27,9 +27,13 @@ def chunk_text(s: str, size: int, overlap: int) -> List[str]:
     while start < n:
         end = min(start + size, n)
         chunks.append(s[start:end])
-        start = end - overlap
-        if start < 0:
-            start = 0
+        # 次のチャンクの開始位置を計算
+        # overlapを考慮して戻るが、必ず前進する
+        next_start = end - overlap
+        if next_start <= start:
+            # 無限ループ防止：最低でも1文字は前進
+            next_start = start + 1
+        start = next_start
         if start >= n:
             break
     return chunks
