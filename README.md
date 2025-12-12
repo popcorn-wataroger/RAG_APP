@@ -14,8 +14,23 @@ PDFやテキストファイルをアップロードし、ChatGPT APIを通して
 # ① 作業フォルダに移動
 cd C:\Users\User\Desktop\RAG_APP
 
-# ② 仮想環境を有効化
-.\.venv\Scripts\Activate.ps1
+# ② 仮想環境を作成（rag_appは任意の名前で）
+python3 -m venv rag_app
 
-# ③ FastAPIアプリを起動
+# ③ 仮装環境を起動
+source rag_app/bin/activate
+
+# ④ 必要なモジュールをインストール
+pip install -r requirements.txt
+
+# ⑤ 環境変数ファイル（.env）を作成
+# プロジェクトルートに .env ファイルを作成し、以下の内容を記載してください：
+PROVIDER=openai
+OPENAI_API_KEY=<あなたのAPIキーをここに入力>
+OPENAI_CHAT_MODEL=gpt-4o-mini
+OPENAI_EMBED_MODEL=text-embedding-3-large
+OPENAI_TRANSCRIBE_MODEL=whisper-1
+CHROMA_DIR=./chroma_store
+
+# ⑥ FastAPIアプリを起動
 uvicorn app:app --reload --port 8000
