@@ -122,11 +122,12 @@ async def ask_with_media_endpoint(
     extra_context = "\n".join(extra_parts) if extra_parts else "（追加メディアなし）"
 
     final_prompt = (
-        "以下の情報を活用して日本語で正確に回答してください。\n\n"
+        "以下の情報を活用して日本語で簡潔に回答してください。\n"
+        "回答は結論のみを述べ、余計な前置きや説明は不要です。\n\n"
         f"【RAGコンテキスト】\n{rag_context}\n\n"
         f"【メディア由来コンテキスト】\n{extra_context}\n\n"
         f"【質問】\n{query}\n\n"
-        "不明点は推測しすぎず、根拠も示してください。"
+        "【回答】"
     )
 
     answer = openai_chat([

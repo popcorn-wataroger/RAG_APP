@@ -212,9 +212,9 @@ def build_context_snippets(retrieved: List[Document]) -> str:
 def build_rag_prompt(query: str, context_snippets: str) -> str:
     return (
         "あなたは丁寧で正確なアシスタントです。\n"
-        "以下のコンテキストに基づいて、日本語で簡潔に答えてください。\n\n"
+        "以下のコンテキストに基づいて、質問に対して簡潔に答えてください。\n"
+        "回答は結論のみを述べ、余計な前置きや説明は不要です。\n\n"
         f"【コンテキスト】\n{context_snippets}\n\n"
         f"【質問】\n{query}\n\n"
-        "【出力フォーマット】\n"
-        "質問を短く言い換えた後、根拠を要約し、最後に結論を述べてください。"
+        "【回答】"
     )
