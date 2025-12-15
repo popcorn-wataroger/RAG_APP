@@ -1,71 +1,50 @@
-# test_rag.py - RAGシステムの診断スクリプト
-import os
-from rag import get_collection, ingest_files, retrieve
+# test_rag.py
+# ------------------------------------------------------------
+# RAG の ingest と検索を確認する最小テスト
+# ------------------------------------------------------------
 
-def test_chroma_status():
-    """ChromaDBの状態を確認"""
-    print("=== ChromaDB 状態確認 ===")
-    try:
-        col = get_collection()
-        count = col.count()
-        print(f"✓ コレクション接続成功")
-        print(f"  保存されているチャンク数: {count}")
-        
-        if count == 0:
-            print("⚠ データが空です。ingestが必要です。")
-            return False
-        else:
-            # サンプルデータを取得
-            sample = col.peek(limit=2)
-            print(f"  サンプルID: {sample['ids'][:2]}")
-            return True
-    except Exception as e:
-        print(f"✗ エラー: {e}")
-        return False
+from pathlib import Path
 
-def test_ingest():
-    """サンプルデータをingest"""
-    print("\n=== データIngest テスト ===")
-    sample_path = os.path.join(os.getcwd(), "data", "sample.txt")
-    if not os.path.exists(sample_path):
-        print(f"✗ {sample_path} が見つかりません")
-        return False
+# ★ 重要：ingest_files を正しく import する
+from rag import ingest_files, retrieve
+
+
+def main():
+    # ------------------------------------------------------------
+    # 1) data フォルダ配下の .md / .txt をすべて集める
+    # ------------------------------------------------------------
+    md_files = [str(p) for p in Path("data").rglob("*.md")]
+    txt_files = [str(p) for p in Path("data").rglob("*.txt")]
+    files = md_files + txt_files
+
+    print("INGEST TARGET FILES:", files)
+
+    if not files:
+        print("❌ data フォルダに .md / .txt がありません")
+        return
+
+    # ------------------------------------------------------------
+    # 2) ingest 実行
+    # ------------------------------------------------------------
+    ingest_result = ingest_files(files)
+    print("Ingest結果:", ingest_result)
+
+    # ------------------------------------------------------------
+    # 3) 検索テスト
+    # ------------------------------------------------------------
+    query = "これはどんなテストですか？"
+    results = retrieve(query)
+
+    print("\n" + "="*60)
+    print(f"検索結果件数: {len(results)}")
+    print("="*60)
     
-    try:
-        result = ingest_files([sample_path])
-        print(f"✓ Ingest成功: {result}")
-        return True
-    except Exception as e:
-        print(f"✗ Ingest失敗: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    for i, doc in enumerate(results, 1):
+        print(f"\n[結果 {i}]")
+        print(f"ソース: {doc.metadata.get('source', 'unknown')}")
+        print(f"チャンク: {doc.metadata.get('chunk', '?')}")
+        print(f"内容: {doc.page_content[:100]}...\n")
 
-def test_retrieve():
-    """検索テスト"""
-    print("\n=== 検索テスト ===")
-    query = "GPTとGeminiの違い"
-    try:
-        results = retrieve(query)
-        print(f"✓ 検索成功")
-        print(f"  取得件数: {len(results)}")
-        for i, r in enumerate(results, 1):
-            print(f"\n  [{i}] {r['metadata']}")
-            print(f"      {r['text'][:100]}...")
-        return len(results) > 0
-    except Exception as e:
-        print(f"✗ 検索失敗: {e}")
-        return False
 
 if __name__ == "__main__":
-    has_data = test_chroma_status()
-    
-    if not has_data:
-        print("\n→ データをingestします...")
-        if test_ingest():
-            has_data = True
-    
-    if has_data:
-        test_retrieve()
-    
-    print("\n診断完了")
+    main()
