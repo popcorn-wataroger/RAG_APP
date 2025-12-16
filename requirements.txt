@@ -4,7 +4,9 @@ python-multipart
 pydantic==2.*
 chromadb
 tiktoken
-pypdf
+pdfplumber
 pillow
 openai==1.*
 python-dotenv
+pytesseract
+pdf2image
