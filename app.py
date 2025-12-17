@@ -69,16 +69,8 @@ def vision_describe_image(image_bytes: bytes) -> str:
     resp = client.chat.completions.create(model=CHAT_MODEL, messages=messages, temperature=0)
     return resp.choices[0].message.content.strip()
 
-@app.post("/ingest")
-def ingest_endpoint(paths: List[str]):
-    try:
-        result = ingest_files(paths)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.post("/ask", response_model=AskOut)
-def ask_endpoint(body: AskIn):
+@app.post("/chat", response_model=AskOut)
+def chat_endpoint(body: AskIn):
     query = body.query
     retrieved = retrieve(query)
     context = build_context_snippets(retrieved) if retrieved else "（該当コンテキストなし）"
@@ -89,8 +81,8 @@ def ask_endpoint(body: AskIn):
     ])
     return AskOut(query=query, answer=answer)
 
-@app.post("/ask-with-media", response_model=AskOut)
-async def ask_with_media_endpoint(
+@app.post("/RAG_chat", response_model=AskOut)
+async def RAG_chat_endpoint(
     query: str = Form(...),
     files: Optional[List[UploadFile]] = File(None),
 ):
