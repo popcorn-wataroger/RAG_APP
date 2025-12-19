@@ -34,3 +34,11 @@ CHROMA_DIR=./chroma_store
 
 # ⑥ FastAPIアプリを起動
 uvicorn app:app --reload --port 8000
+
+## 開発メモ：いま使っている起動コマンド（Windows）
+
+> 開発中メモ。自分が実行して動作確認したコマンドを残しています。
+
+### 1) 仮想環境を使わないシンプル実行
+```bat
+python app.py

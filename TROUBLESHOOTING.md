@@ -11,6 +11,20 @@
 **問題**: ターミナルで直接uvicornコマンドを実行するとPowerShellの制約で不具合が発生  
 **解決策**: 専用の起動スクリプト`start_server.py`を作成
 
+### 3. Swagger UI からの PDF アップロード失敗（CORS / Network Error）
+**症状**: `/ask-with-media` に PDF をアップロードすると "Failed to fetch" エラー  
+**原因**: 
+- CORS 設定が未設定
+- エラーハンドリング不足
+- タイムアウト対策なし
+
+**修正内容**:
+- ✅ CORS ミドルウェアを追加
+- ✅ 詳細なロギング機能
+- ✅ ファイルサイズ制限（20MB）
+- ✅ try-except による適切なエラーハンドリング
+- ✅ HTTPException による明確なエラーレスポンス
+
 ---
 
 ## 🚀 使用方法
@@ -19,19 +33,17 @@
 
 **方法1: 起動スクリプトを使用（推奨）**
 ```powershell
-c:\Users\User\Desktop\ragbot\.venv\Scripts\python.exe c:\Users\User\Desktop\ragbot\start_server.py
+python start_server.py
 ```
 
 **方法2: uvicornを直接実行**
 ```powershell
-cd c:\Users\User\Desktop\ragbot
-.\.venv\Scripts\Activate.ps1
-python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn app:app --host 0.0.0.0 --port 8080 --reload
 ```
 
 サーバーが起動したら、以下のURLにアクセスできます：
-- Swagger UI: http://localhost:8000/docs
-- API: http://localhost:8000
+- Swagger UI: http://localhost:8080/docs
+- API: http://localhost:8080
 
 ---
 
@@ -43,7 +55,8 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 **リクエスト例**:
 ```json
 [
-  "c:\\Users\\User\\Desktop\\ragbot\\data\\sample.txt"
+  "data/sample.txt",
+  "data/sample.md"
 ]
 ```
 
@@ -151,6 +164,120 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 2. サーバーのログを確認
 3. リクエストの形式が正しいか確認
 
+### `/ask-with-media` で "Failed to fetch" エラー
+**原因と対処法**:
+
+#### 1. CORS エラー
+**確認方法**: ブラウザの開発者ツール（F12）→ Console タブ
+```
+Access to fetch at 'http://127.0.0.1:8080/ask-with-media' from origin 'http://127.0.0.1:8080' has been blocked by CORS policy
+```
+
+**解決策**: 
+- ✅ `app.py` に CORS ミドルウェアを追加済み
+- サーバーを再起動: `python app.py`
+
+#### 2. ファイルサイズ超過
+**症状**: 大きなPDF（20MB以上）をアップロードすると失敗
+
+**解決策**:
+```python
+# ファイルサイズ制限: 20MB
+# より大きなファイルは分割してください
+```
+
+**回避方法**:
+- PDF を分割（Adobe Acrobat / オンラインツール）
+- テキスト抽出して .txt でアップロード
+
+#### 3. タイムアウト
+**症状**: 大きなファイルの処理中に接続が切れる
+
+**解決策**:
+```python
+# test_upload.py でテスト（タイムアウト60秒設定済み）
+python test_upload.py
+```
+
+#### 4. ログで原因を特定
+**サーバーログの確認方法**:
+```bash
+# サーバー起動時のターミナル出力を確認
+INFO:app:リクエスト受信: query='...', files=1件
+INFO:app:ファイル読み込み: sample.pdf (2.34 MB)
+INFO:app:PDF読み込み成功: sample.pdf (1234 文字)
+```
+
+**エラー例**:
+```
+ERROR:app:PDF処理エラー sample.pdf: ...
+```
+
+---
+
+## 🧪 テスト方法
+
+### 1. コマンドラインでテスト（推奨）
+```bash
+# テストスクリプト実行
+python test_upload.py
+```
+
+**出力例**:
+```
+============================================================
+サーバー稼働確認
+============================================================
+✅ サーバーは正常に稼働しています
+   Swagger UI: http://127.0.0.1:8080/docs
+
+============================================================
+テキストのみのテスト
+============================================================
+📤 送信中...
+✅ ステータスコード: 200
+
+📝 質問: RAGシステムについて教えてください
+
+💬 回答:
+RAGは検索拡張生成の略で...
+```
+
+### 2. curl でテスト
+```bash
+# テキストのみ
+curl -X POST "http://127.0.0.1:8080/ask-with-media" \
+  -F "query=これは何のテストですか？"
+
+# PDFアップロード
+curl -X POST "http://127.0.0.1:8080/ask-with-media" \
+  -F "query=このPDFの内容を要約してください" \
+  -F "files=@data/sample.pdf"
+```
+
+### 3. Swagger UI でテスト
+1. http://127.0.0.1:8080/docs にアクセス
+2. `/ask-with-media` セクションを展開
+3. "Try it out" をクリック
+4. `query` に質問を入力
+5. `files` で "Add string item" → "Choose File" で PDF 選択
+6. "Execute" をクリック
+
+**成功時のレスポンス**:
+```json
+{
+  "query": "このPDFの内容を要約してください",
+  "answer": "このドキュメントは..."
+}
+```
+
+**失敗時のレスポンス**:
+```json
+{
+  "detail": "処理中にエラーが発生しました: ..."
+}
+```
+
 ---
 
 ## 📊 動作確認済み
@@ -160,19 +287,34 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ✅ OpenAI APIとの連携  
 ✅ RAGパイプライン全体の動作  
 ✅ FastAPIサーバーの起動  
-✅ Swagger UIの表示
+✅ Swagger UIの表示  
+✅ CORS 設定  
+✅ PDF/画像/音声のアップロード  
+✅ エラーハンドリング  
+✅ ロギング機能
 
 ---
 
 ## 🎯 次のステップ
 
-1. **外部ブラウザでSwagger UIを開く**:
-   - http://localhost:8000/docs にアクセス
-   - `/ask` エンドポイントで質問をテスト
+1. **テストスクリプトで動作確認**:
+   ```bash
+   python test_upload.py
+   ```
 
-2. **追加データをingest**:
+2. **Swagger UI でテスト**:
+   - http://127.0.0.1:8080/docs にアクセス
+   - `/ask` エンドポイントで質問をテスト
+   - `/ask-with-media` でPDFアップロード
+
+3. **追加データをingest**:
    - `data/`フォルダに新しいPDFやTXTファイルを配置
    - `/ingest` エンドポイントで取り込み
+
+4. **本番環境へのデプロイ**:
+   - CORS 設定を本番ドメインに変更
+   - 認証機能の追加（DESIGN_GUIDE.md 参照）
+   - HTTPS 設定
 
 3. **マルチモーダル機能のテスト**:
    - `/ask-with-media` エンドポイントで画像や音声ファイルをアップロード
