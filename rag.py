@@ -66,12 +66,13 @@ def get_collection(name: str = "docs"):
 # ------------------------------------------------------------
 # ingest（★ 修正版：.md / .txt / .pdf を確実に読む）
 # ------------------------------------------------------------
-def ingest_files(file_paths: List[str]) -> Dict:
+def ingest_files(file_paths: List[str], openai_client=None) -> Dict:
     """
     複数ファイルを読み込み、ChromaDB に登録する
     
     Args:
         file_paths: 読み込むファイルパスのリスト
+        openai_client: OpenAI client instance (for Vision API)
     
     Returns:
         {'added_chunks': int, 'failed_files': List[str], 'total_files': int}
@@ -97,7 +98,7 @@ def ingest_files(file_paths: List[str]) -> Dict:
             if ext in (".txt", ".md"):
                 raw = read_txt(path)
             elif ext == ".pdf":
-                raw = read_pdf(path)
+                raw = read_pdf(path, openai_client=openai_client)
             else:
                 logger.info(f"サポート対象外の拡張子: {path}")
                 continue
@@ -188,7 +189,7 @@ def retrieve(query: str, top_k: int = TOP_K) -> List[Document]:
 # ------------------------------------------------------------
 def build_context_snippets(retrieved: List[Document]) -> str:
     """
-    検索結果からコンテキスト文字列を生成
+    検索結果からコンテキスト文字列を生成（ページ番号付き）
     
     Args:
         retrieved: Document オブジェクトのリスト
@@ -200,21 +201,31 @@ def build_context_snippets(retrieved: List[Document]) -> str:
     for i, doc in enumerate(retrieved, 1):
         src = doc.metadata.get("source", "unknown")
         chunk_id = doc.metadata.get("chunk", "?")
+        page = doc.metadata.get("page", "不明")
         lines.append(
-            f"[{i}] source: {src} (chunk {chunk_id})\n{doc.page_content}\n"
+            f"[{i}] source: {src} (chunk {chunk_id}, page {page})\n{doc.page_content}\n"
         )
     return "\n---\n".join(lines)
 
 
 # ------------------------------------------------------------
-# プロンプト生成
+# プロンプト生成（500文字構造化要約・企業理念厳密記載対応）
 # ------------------------------------------------------------
 def build_rag_prompt(query: str, context_snippets: str) -> str:
     return (
-        "あなたは丁寧で正確なアシスタントです。\n"
-        "以下のコンテキストに基づいて、質問に対して簡潔に答えてください。\n"
-        "回答は結論のみを述べ、余計な前置きや説明は不要です。\n\n"
-        f"【コンテキスト】\n{context_snippets}\n\n"
+        "あなたは丁寧で正確なアシスタントです。以下の参照資料に基づいて、質問に対して回答してください。\n"
+        "\n"
+        "【重要な指示】\n"
+        "1. 回答は500文字程度の日本語で、資料の主要な内容を網羅的かつ構造的に記述してください\n"
+        "2. 企業理念や正式名称を記載する場合は、資料に記載されている**完全一致の表現**をそのまま使用してください（改行・記号を含む）\n"
+        "3. 複数の観点や要素を含む場合は、論理的な順序で整理して記述してください\n"
+        "4. 余計な前置きや説明は不要です。本文のみを返してください\n"
+        "\n"
+        "【出力例】\n"
+        "質問: この資料を要約してください\n"
+        "回答: 本資料は、社員の成長や承認の重要性、感謝の気持ちを持つこと、チームでの目標共有の方法について述べている。承認は、成果だけでなくプロセスを認め合うことが大切であり、日常的に観察し、他者の努力を言葉で伝えることが推奨されている。また、感謝の気持ちを持つことで心の安定が得られ、職場環境が向上することが強調されている。目標設定にはGPDCAを用い、明確なゴールを共有することが重要である。さらに、5W1Hを意識することで、情報の伝達がスムーズになり、意思決定が円滑に行えるようになる。全体として、コミュニケーションの質を高め、チームの一体感を醸成するための具体的な方法が示されている。\n"
+        "\n"
+        f"【参照資料】\n{context_snippets}\n\n"
         f"【質問】\n{query}\n\n"
-        "【回答】"
+        "【回答】\n"
     )
