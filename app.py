@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------
 # 1) アプリ初期化
 # ------------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 app = FastAPI(title="NotebookLM-like RAG Bot")
 
 app.add_middleware(
@@ -302,8 +304,9 @@ async def RAG_chat_endpoint(
 @app.get("/")
 def root():
     """ルートパスでUIを表示"""
-    return FileResponse("ui/index.html")
+    return FileResponse(os.path.join(BASE_DIR, "ui", "index.html"))
 
 # 静的ファイル（CSS、JSなど）を配信
-if os.path.exists("ui"):
-    app.mount("/ui", StaticFiles(directory="ui"), name="ui")
+_ui_dir = os.path.join(BASE_DIR, "ui")
+if os.path.exists(_ui_dir):
+    app.mount("/ui", StaticFiles(directory=_ui_dir), name="ui")

@@ -1,0 +1,9 @@
+.git
+__pycache__
+*.pyc
+*.pyo
+.env
+chroma_db/
+START_SERVER.bat
+tests/
+docs/

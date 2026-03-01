@@ -129,7 +129,9 @@
   const chatHintEl = document.getElementById("chatHint");
 
   function apiBase() {
-    return (apiBaseEl.value || "").trim().replace(/\/+$/, "");
+    // デプロイ環境では相対パスを使用（ローカルはinputで上書き可能）
+    const v = (apiBaseEl.value || "").trim().replace(/\/+$/, "");
+    return v === "http://127.0.0.1:8080" ? "" : v;
   }
 
   function setEndpointLabel() {
